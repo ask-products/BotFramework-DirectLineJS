@@ -505,9 +505,25 @@ export class DirectLine implements IBotConnection {
         // Use postMessageWithAttachments for messages with attachments that are local files (e.g. an image to upload)
         // Technically we could use it for *all* activities, but postActivity is much lighter weight
         // So, since WebChat is partially a reference implementation of Direct Line, we implement both.
-        if (activity.type === "message" && activity.attachments && activity.attachments.length > 0)
-            return this.postMessageWithAttachments(activity);
-
+        
+        // ASKPRO
+        // Here we check that the submitted attachment url is publicly available. 
+        // We are intercepting the attachments in WebChat, handling upload and passing public S3 urls forward instead of local blobs.
+        // We *shouldn't* be recieving blobs, but...
+        if (activity.type === "message" && activity.attachments && activity.attachments.length > 0) {
+            const urlTest = (attachment: any) => {
+                if(attachment.contentUrl.slice(0,4) === 'blob') {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            let localUrl = activity.attachments.some(urlTest);
+            if( localUrl ) {
+                return this.postMessageWithAttachments(activity);
+            }
+        }
+        // ASKPRO
         // If we're not connected to the bot, get connected
         // Will throw an error if we are not connected
         konsole.log("postActivity", activity);
